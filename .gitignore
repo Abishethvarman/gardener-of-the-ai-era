@@ -1,0 +1,6 @@
+__pycache__/
+*.pyc
+.venv/
+training/data/
+training/results/
+.env

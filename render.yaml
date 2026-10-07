@@ -1,0 +1,23 @@
+# Render Blueprint: one click deploys the app on Render's free plan.
+#
+# The free plan (0.1 CPU, 512 MB) can't run a language model, so out of the box
+# this serves briefs from the built-in writer. To get model-written briefs,
+# point GARDENER_LLM_URL at any OpenAI-compatible endpoint serving an
+# open-weight model (Gemma on Ollama, a DigitalOcean GPU Droplet, ...) and set
+# GARDENER_LLM to "on".
+services:
+  - type: web
+    name: gardener
+    runtime: docker
+    plan: free
+    healthCheckPath: /api/health
+    autoDeployTrigger: commit
+    envVars:
+      - key: GARDENER_LLM
+        value: "off"
+      - key: GARDENER_LLM_URL
+        sync: false
+      - key: GARDENER_MODEL
+        value: gemma3:4b
+      - key: GARDENER_API_KEY
+        sync: false

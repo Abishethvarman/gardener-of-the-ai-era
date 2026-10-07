@@ -1,0 +1,3 @@
+# Only needed for fine-tuning. The app itself has no dependencies.
+tinker
+torch

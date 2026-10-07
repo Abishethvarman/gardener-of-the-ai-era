@@ -1,0 +1,10 @@
+{
+  "name": "Gardener of the AI Era",
+  "short_name": "Gardener",
+  "description": "Your monsoon garden helper, on open-weight models.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#e6eae3",
+  "theme_color": "#e6eae3",
+  "icons": [{ "src": "/icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any" }]
+}

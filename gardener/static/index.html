@@ -1,0 +1,678 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Gardener of the AI Era</title>
+<meta name="description" content="Your monsoon garden helper: what to sow this week, plant checks, seed packets, a garden diary and balcony plans. Runs on open-weight models.">
+<meta name="theme-color" content="#e6eae3">
+<link rel="manifest" href="/manifest.webmanifest">
+<link rel="icon" href="/icon.svg" type="image/svg+xml">
+<style>
+  :root {
+    --paper: #e6eae3;
+    --card: #f8f9f5;
+    --line: #cfd6cb;
+    --ink: #1e2441;
+    --muted: #555c6f;
+    --paddy: #3b7a32;
+    --urgent: #8a5a00;
+    --urgent-fill: #d4961c;
+    --rain: #5f80b5;
+    --dry: #d9ddd3;
+    --serif: "Iowan Old Style", "Palatino Linotype", Palatino, "Book Antiqua", Georgia, serif;
+    --sans: system-ui, -apple-system, "Segoe UI", Roboto, "Noto Sans", "Helvetica Neue", sans-serif;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --paper: #11151d;
+      --card: #191e29;
+      --line: #2b3242;
+      --ink: #e6e9f2;
+      --muted: #a3aabb;
+      --paddy: #7cbf6c;
+      --urgent: #f0b44a;
+      --urgent-fill: #e0a33a;
+      --rain: #7f9fd6;
+      --dry: #2a303d;
+    }
+  }
+  :root[data-theme="dark"] {
+    --paper: #11151d; --card: #191e29; --line: #2b3242; --ink: #e6e9f2; --muted: #a3aabb;
+    --paddy: #7cbf6c; --urgent: #f0b44a; --urgent-fill: #e0a33a; --rain: #7f9fd6; --dry: #2a303d;
+  }
+  * { box-sizing: border-box; }
+  html { -webkit-text-size-adjust: 100%; }
+  body { margin: 0; background: var(--paper); color: var(--ink); font: 16px/1.5 var(--sans); }
+  main { max-width: 40rem; margin: 0 auto; padding: 20px 16px calc(40px + env(safe-area-inset-bottom)); }
+  h1, h2 { font-family: var(--serif); font-weight: 700; margin: 0; letter-spacing: -0.01em; }
+  button, select, input { font: inherit; color: inherit; }
+  :focus-visible { outline: 3px solid var(--rain); outline-offset: 2px; }
+
+  .top { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; }
+  .brand { font: 700 1.05rem/1 var(--serif); }
+  .where { color: var(--muted); font-size: 0.9rem; text-align: right; }
+
+  .sheet { background: var(--card); border: 1.5px solid var(--ink); border-radius: 4px; padding: 20px 18px; margin-top: 14px; }
+
+  .headline { font-size: clamp(1.9rem, 8vw, 2.7rem); line-height: 1.08; }
+  .strip { display: block; width: 100%; height: auto; margin: 16px 0 2px; overflow: visible; }
+  .strip text { font: 10.5px var(--sans); fill: var(--muted); }
+  .strip .base { fill: var(--dry); }
+  .strip .wet { fill: var(--rain); }
+  .strip .tick { stroke: var(--ink); stroke-width: 1.5; }
+  .strip .season-name { fill: var(--ink); font-weight: 600; }
+  .strip .today-line { stroke: var(--urgent-fill); stroke-width: 2.5; }
+  .strip .today-dot { fill: var(--urgent-fill); }
+  .strip .today-label { fill: var(--urgent); font-weight: 700; }
+  .legend { margin: 6px 0 0; color: var(--muted); font-size: 0.85rem; }
+  .legend .swatch { display: inline-block; width: 18px; height: 9px; background: var(--rain); border-radius: 2px; margin-right: 6px; vertical-align: 1px; }
+
+  .brief { font: 1.2rem/1.55 var(--serif); margin: 18px 0 6px; max-width: 34em; }
+  .byline { color: var(--muted); font-size: 0.85rem; margin: 0; }
+
+  .alert { margin-top: 18px; border: 2px solid var(--urgent-fill); border-radius: 4px; padding: 10px 12px; font-size: 0.95rem; }
+
+  .group { margin-top: 26px; }
+  .group h2 { font-size: 1.25rem; padding-bottom: 6px; border-bottom: 1.5px solid var(--ink); }
+  .group .hint { color: var(--muted); font-size: 0.85rem; margin: 6px 0 0; }
+  .item { border-bottom: 1px solid var(--line); }
+  .item summary { list-style: none; cursor: pointer; padding: 11px 0 9px; display: grid; grid-template-columns: 1fr auto; gap: 2px 12px; }
+  .item summary::-webkit-details-marker { display: none; }
+  .item .crop { font-weight: 700; }
+  .item .local { font-style: italic; font-weight: 400; color: var(--muted); }
+  .item .action { color: var(--muted); font-size: 0.9rem; }
+  .item .when { text-align: right; font-size: 0.9rem; font-variant-numeric: tabular-nums; white-space: nowrap; }
+  .item .when.urgent { color: var(--urgent); font-weight: 700; }
+  .item .range { color: var(--muted); font-size: 0.85rem; text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
+  .item .left { grid-column: 1 / -1; height: 5px; background: var(--dry); border-radius: 3px; margin-top: 6px; overflow: hidden; }
+  .item .left > span { display: block; height: 100%; background: var(--paddy); }
+  .item .left > span.urgent { background: var(--urgent-fill); }
+  .item .tip { margin: 0 0 12px; color: var(--muted); font-size: 0.92rem; max-width: 34em; }
+  .item[open] .crop::after { content: " \2212"; color: var(--muted); font-weight: 400; }
+  .item:not([open]) .crop::after { content: " +"; color: var(--muted); font-weight: 400; }
+
+  .notice { margin: 14px 0 0; padding: 8px 12px; border-left: 4px solid var(--urgent-fill); background: var(--card); font-size: 0.9rem; }
+  .empty { margin: 22px 0 0; font-family: var(--serif); font-size: 1.2rem; }
+
+  details.settings { margin-top: 14px; }
+  details.settings > summary { cursor: pointer; font-size: 0.9rem; color: var(--muted); }
+  .fields { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-top: 12px; }
+  .fields label { display: grid; gap: 4px; font-size: 0.85rem; color: var(--muted); }
+  .fields .wide { grid-column: 1 / -1; }
+  .fields select, .fields input[type="text"], .fields input[type="date"] {
+    padding: 9px 10px; border: 1.5px solid var(--ink); border-radius: 4px; background: var(--card); color: var(--ink); min-height: 44px; width: 100%;
+  }
+  .fields .check { display: flex; align-items: center; gap: 10px; grid-column: 1 / -1; color: var(--ink); font-size: 0.9rem; min-height: 44px; }
+  .fields .check input { width: 20px; height: 20px; accent-color: var(--paddy); }
+  .fields .note { grid-column: 1 / -1; margin: 0; font-size: 0.82rem; color: var(--muted); }
+  .actions { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 14px; }
+  .btn { min-height: 44px; padding: 0 16px; border: 1.5px solid var(--ink); border-radius: 4px; background: var(--ink); color: var(--paper); cursor: pointer; font-weight: 600; }
+
+  /* tabs */
+  .tabs { display: flex; gap: 4px; overflow-x: auto; margin: 14px -16px 0; padding: 0 16px; scrollbar-width: none; }
+  .tabs::-webkit-scrollbar { display: none; }
+  .tabs a { flex: none; padding: 9px 12px; border: 1.5px solid transparent; border-radius: 4px 4px 0 0; color: var(--muted); text-decoration: none; font-size: 0.92rem; white-space: nowrap; min-height: 44px; display: flex; align-items: center; }
+  .tabs a[aria-current="page"] { color: var(--ink); border-color: var(--ink); border-bottom-color: var(--card); background: var(--card); font-weight: 600; margin-bottom: -1.5px; position: relative; z-index: 1; }
+  .panel .sheet { margin-top: 0; }
+  .panel h1 { font-size: clamp(1.6rem, 7vw, 2.2rem); line-height: 1.1; }
+  .lede { color: var(--muted); margin: 8px 0 0; max-width: 34em; }
+  .row { display: flex; flex-wrap: wrap; gap: 10px; align-items: end; margin-top: 14px; }
+  .row label { display: grid; gap: 4px; font-size: 0.85rem; color: var(--muted); flex: 1 1 140px; }
+  .row select, .row input, .row textarea { padding: 9px 10px; border: 1.5px solid var(--ink); border-radius: 4px; background: var(--card); color: var(--ink); min-height: 44px; width: 100%; font: inherit; }
+  .row textarea { min-height: 88px; resize: vertical; }
+  .btn.quiet { background: transparent; color: var(--ink); }
+  .btn:disabled { opacity: 0.55; cursor: progress; }
+  .preview { display: block; max-width: 100%; max-height: 260px; margin-top: 12px; border-radius: 4px; border: 1px solid var(--line); }
+  .result { margin-top: 18px; }
+  .result h2 { font-size: 1.2rem; margin-top: 4px; }
+  .cause { border-left: 3px solid var(--paddy); padding: 6px 0 6px 12px; margin: 12px 0; }
+  .cause strong { display: block; }
+  .cause span { color: var(--muted); font-size: 0.95rem; }
+  .verdict { font: 1.25rem/1.45 var(--serif); margin: 14px 0 0; }
+  .facts { margin: 10px 0 0; padding: 0; list-style: none; font-size: 0.95rem; }
+  .facts li { padding: 4px 0; border-bottom: 1px solid var(--line); display: flex; justify-content: space-between; gap: 12px; }
+  .facts li span:first-child { color: var(--muted); }
+  .water { margin-top: 16px; padding: 10px 12px; border: 1.5px solid var(--rain); border-radius: 4px; font-size: 0.95rem; }
+  .langbar { display: flex; align-items: center; gap: 8px; margin-top: 16px; font-size: 0.85rem; color: var(--muted); }
+  .langbar select { padding: 6px 8px; border: 1.5px solid var(--line); border-radius: 4px; background: var(--card); color: var(--ink); min-height: 36px; font: inherit; }
+  .linkbtn { background: none; border: none; padding: 0; color: var(--rain); text-decoration: underline; cursor: pointer; font-size: 0.85rem; }
+  .entry { display: grid; grid-template-columns: 1fr auto; gap: 2px 12px; padding: 11px 0; border-bottom: 1px solid var(--line); }
+  .entry .meta { color: var(--muted); font-size: 0.9rem; grid-column: 1 / 2; }
+  .entry .status { font-size: 0.9rem; text-align: right; white-space: nowrap; }
+  .entry .status.ready { color: var(--paddy); font-weight: 700; }
+  .entry .resow { grid-column: 1 / -1; color: var(--urgent); font-size: 0.9rem; }
+  .entry button { grid-column: 2; grid-row: 1 / 3; align-self: center; }
+  .pick { padding: 11px 0; border-bottom: 1px solid var(--line); }
+  .pick .meta { color: var(--muted); font-size: 0.9rem; }
+  .skipped { color: var(--muted); font-size: 0.85rem; margin-top: 14px; }
+  .small { font-size: 0.85rem; color: var(--muted); }
+
+  footer { margin-top: 28px; color: var(--muted); font-size: 0.82rem; }
+  [hidden] { display: none !important; }
+
+  @media print {
+    :root { --card: #fff; --line: #bbb; --ink: #000; --muted: #333; --dry: #e4e4e4; --rain: #6d7f99; --paddy: #1f5a35; --urgent: #6b4300; --urgent-fill: #8a5a00; }
+    body { background: #fff; color: #000; }
+    .settings, .actions, footer, .notice, .tabs, .langbar, .water button { display: none !important; }
+    .sheet { border: none; padding: 0; margin: 0; }
+  }
+</style>
+</head>
+<body>
+<main>
+  <div class="top">
+    <span class="brand">Gardener</span>
+    <span class="where" id="where"></span>
+  </div>
+
+  <details class="settings" id="settings">
+    <summary>Change place or date</summary>
+    <form class="fields" id="form">
+      <label class="wide">Place
+        <select id="region" name="region"></select>
+      </label>
+      <label>Monsoon usually arrives (MM-DD)
+        <input id="onset" type="text" inputmode="numeric" placeholder="06-27" pattern="\d{1,2}-\d{1,2}" autocomplete="off">
+      </label>
+      <label>Monsoon usually ends (MM-DD)
+        <input id="withdrawal" type="text" inputmode="numeric" placeholder="09-25" pattern="\d{1,2}-\d{1,2}" autocomplete="off">
+      </label>
+      <label class="check"><input id="cool" type="checkbox" checked> Cool winters, good for cauliflower, peas and carrots</label>
+      <label class="wide">Plan for this day
+        <input id="day" type="date">
+      </label>
+      <p class="note" id="source-note"></p>
+      <div class="wide actions" style="margin-top:0">
+        <button class="btn" type="submit">Update</button>
+      </div>
+    </form>
+  </details>
+
+  <nav class="tabs" id="tabs" aria-label="Sections">
+    <a href="#week" data-tab="week">This week</a>
+    <a href="#check" data-tab="check" data-feature="photo">Plant check</a>
+    <a href="#ask" data-tab="ask" data-feature="ask">Ask</a>
+    <a href="#packet" data-tab="packet" data-feature="packet">Seed packet</a>
+    <a href="#garden" data-tab="garden" data-feature="diary">My garden</a>
+    <a href="#balcony" data-tab="balcony" data-feature="balcony">Balcony</a>
+  </nav>
+
+  <div class="notice" id="notice" role="status" hidden></div>
+
+  <!-- This week -->
+  <section class="panel" id="panel-week">
+    <article class="sheet" id="sheet" aria-live="polite"><p class="empty">Reading the calendar…</p></article>
+    <div class="actions"><button class="btn" type="button" id="print">Print this card</button></div>
+  </section>
+
+  <!-- Plant check -->
+  <section class="panel" id="panel-check" hidden>
+    <div class="sheet">
+      <h1>What's wrong with my plant?</h1>
+      <p class="lede">Take the phone to the plant and photograph the leaf or stem that looks wrong. Gemma suggests possible causes and simple things to check. The photo goes only to your own model.</p>
+      <form id="check-form">
+        <div class="row"><label>Photo<input id="check-photo" type="file" accept="image/*" capture="environment"></label></div>
+        <img class="preview" id="check-preview" alt="" hidden>
+        <div class="row"><label>What you noticed (optional)<input id="check-note" type="text" maxlength="200" placeholder="Yellow leaves at the bottom since last week"></label></div>
+        <div class="actions"><button class="btn" type="submit" id="check-go">Check this plant</button></div>
+      </form>
+      <div class="result" id="check-result" aria-live="polite"></div>
+    </div>
+  </section>
+
+  <!-- Ask -->
+  <section class="panel" id="panel-ask" hidden>
+    <div class="sheet">
+      <h1>Ask about your calendar</h1>
+      <p class="lede">Ask in your own words. Answers use only this place's sowing calendar, and the real dates are always shown underneath.</p>
+      <form id="ask-form">
+        <div class="row"><label>Your question<textarea id="ask-q" maxlength="400" placeholder="Can I still plant tomatoes on my terrace this month?"></textarea></label></div>
+        <div class="actions"><button class="btn" type="submit" id="ask-go">Ask</button></div>
+      </form>
+      <div class="result" id="ask-result" aria-live="polite"></div>
+    </div>
+  </section>
+
+  <!-- Seed packet -->
+  <section class="panel" id="panel-packet" hidden>
+    <div class="sheet">
+      <h1>Is it time to sow this?</h1>
+      <p class="lede">Photograph the front or back of a seed packet. Gemma reads it, and the calendar for your place decides whether to sow now.</p>
+      <form id="packet-form">
+        <div class="row"><label>Packet photo<input id="packet-photo" type="file" accept="image/*" capture="environment"></label></div>
+        <img class="preview" id="packet-preview" alt="" hidden>
+        <div class="actions"><button class="btn" type="submit" id="packet-go">Read packet</button></div>
+      </form>
+      <div class="result" id="packet-result" aria-live="polite"></div>
+    </div>
+  </section>
+
+  <!-- My garden -->
+  <section class="panel" id="panel-garden" hidden>
+    <div class="sheet">
+      <h1>My garden</h1>
+      <p class="lede">Note what you planted. You'll see when each one should be ready, and when to sow another batch. Your list stays on this device.</p>
+      <form id="garden-form">
+        <div class="row">
+          <label>Crop<select id="garden-crop"></select></label>
+          <label>Planted on<input id="garden-date" type="date"></label>
+        </div>
+        <div class="row"><label>Note (optional)<input id="garden-note" type="text" maxlength="200" placeholder="Two grow bags on the terrace"></label></div>
+        <div class="actions"><button class="btn" type="submit">Add planting</button></div>
+      </form>
+      <div class="result" id="garden-result" aria-live="polite"></div>
+    </div>
+  </section>
+
+  <!-- Balcony -->
+  <section class="panel" id="panel-balcony" hidden>
+    <div class="sheet">
+      <h1>What fits my balcony?</h1>
+      <p class="lede">Tell us your pots and how many hours of direct sun they get. You'll get crops you can start now or soon.</p>
+      <form id="balcony-form">
+        <div class="row">
+          <label>Hours of direct sun<select id="balcony-sun"></select></label>
+          <label>Number of pots<input id="balcony-pots" type="number" min="1" max="30" value="4"></label>
+        </div>
+        <div class="actions"><button class="btn" type="submit">Suggest crops</button></div>
+      </form>
+      <div class="result" id="balcony-result" aria-live="polite"></div>
+    </div>
+  </section>
+
+  <footer>
+    Windows are rules of thumb from average season dates. This year's rain and your soil get the final say. Plant checks are suggestions from a small model, not a diagnosis.
+  </footer>
+</main>
+
+<script>
+(() => {
+  "use strict";
+  const $ = (id) => document.getElementById(id);
+  const MONTHS = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
+  const SVGNS = "http://www.w3.org/2000/svg";
+  const LS_KEY = "gardener:last", LS_SETTINGS = "gardener:settings", LS_DIARY = "gardener:diary";
+  const COUNTRY_ORDER = ["India", "Pakistan", "Bangladesh", "Sri Lanka", "Thailand", "Philippines", "Vietnam"];
+  const LANGS = [["", "English"], ["hi", "हिन्दी Hindi"], ["ur", "اردو Urdu"], ["bn", "বাংলা Bangla"], ["ta", "தமிழ் Tamil"],
+    ["te", "తెలుగు Telugu"], ["si", "සිංහල Sinhala"], ["th", "ไทย Thai"], ["vi", "Tiếng Việt"], ["tl", "Tagalog"]];
+  const POT_WORD = { small: "Small pot", medium: "Medium pot", large: "Large pot" };
+
+  const store = {
+    get(k, d) { try { const v = JSON.parse(localStorage.getItem(k)); return v == null ? d : v; } catch (_) { return d; } },
+    set(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch (_) {} },
+  };
+  function el(tag, props, ...kids) {
+    const node = document.createElement(tag);
+    if (props) for (const [k, v] of Object.entries(props)) {
+      if (k === "class") node.className = v; else if (v !== undefined && v !== null) node.setAttribute(k, v);
+    }
+    for (const kid of kids) if (kid != null) node.append(kid);
+    return node;
+  }
+  function svg(tag, attrs, text) {
+    const node = document.createElementNS(SVGNS, tag);
+    for (const [k, v] of Object.entries(attrs || {})) node.setAttribute(k, v);
+    if (text != null) node.textContent = text;
+    return node;
+  }
+  const plural = (n, w) => `${n} ${w}${n === 1 ? "" : "s"}`;
+  const todayLocal = () => new Date().toLocaleDateString("en-CA");
+  const mdLabel = (md) => { const [m, d] = md.split("-").map(Number); return `${MONTHS[m - 1]} ${d}`; };
+  const isoLabel = (iso) => mdLabel(iso.slice(5));
+
+  let settings = store.get(LS_SETTINGS, {});
+  let regions = [], enabledFeatures = new Set(), crops = [];
+
+  // ---------- shared helpers ----------
+  function placeParams() {
+    const s = settings, p = {};
+    if (s.region === "custom") { p.onset = s.onset; p.withdrawal = s.withdrawal; p.cool = s.cool ? "1" : "0"; if (s.lat != null) { p.lat = s.lat; p.lon = s.lon; } }
+    else p.region = s.region;
+    p.date = s.day || todayLocal();
+    return p;
+  }
+  const query = (extra) => new URLSearchParams({ ...placeParams(), ...(extra || {}) }).toString();
+  async function api(path, body) {
+    const opts = body ? { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ ...placeParams(), ...body }) } : {};
+    const res = await fetch(path, opts);
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || "Something went wrong. Try again.");
+    return { data, res };
+  }
+  function notice(msg) { const n = $("notice"); n.hidden = !msg; n.textContent = msg || ""; }
+  function busy(btn, on, label) { btn.disabled = on; if (label) btn.dataset.label ||= btn.textContent; btn.textContent = on ? label : (btn.dataset.label || btn.textContent); }
+  function errorBox(target, err) { target.replaceChildren(el("p", { class: "notice" }, err.message || String(err))); }
+
+  // resize a photo on the device before sending it (faster, and smaller for the model)
+  function readPhoto(file, max = 1024) {
+    return new Promise((resolve, reject) => {
+      const img = new Image();
+      img.onload = () => {
+        const scale = Math.min(1, max / Math.max(img.width, img.height));
+        const c = document.createElement("canvas");
+        c.width = Math.round(img.width * scale); c.height = Math.round(img.height * scale);
+        c.getContext("2d").drawImage(img, 0, 0, c.width, c.height);
+        URL.revokeObjectURL(img.src);
+        resolve(c.toDataURL("image/jpeg", 0.85));
+      };
+      img.onerror = () => reject(new Error("That file couldn't be opened as a photo."));
+      img.src = URL.createObjectURL(file);
+    });
+  }
+  function wirePreview(input, preview) {
+    input.addEventListener("change", () => {
+      const f = input.files[0];
+      preview.hidden = !f;
+      if (f) preview.src = URL.createObjectURL(f);
+    });
+  }
+
+  // ---------- the calendar card ----------
+  const doy = (md) => { const [m, d] = md.split("-").map(Number); return (Date.UTC(2025, m - 1, Math.min(d, m === 2 ? 28 : d)) - Date.UTC(2025, 0, 1)) / 864e5; };
+  function yearStrip(data) {
+    const W = 360, H = 82, y = 26, h = 14, x = (md) => (doy(md) / 365) * W;
+    const s = svg("svg", { class: "strip", viewBox: `0 0 ${W} ${H}`, role: "img", "aria-label": "Year at a glance: " +
+      data.rains_bands.map((b) => `${b.name} from ${mdLabel(b.start)} to ${mdLabel(b.end)}`).join("; ") + ". " +
+      data.seasons.map((ss) => `${ss.title} starts ${mdLabel(ss.start)}`).join("; ") + `. Today is ${isoLabel(data.today)}.` });
+    s.append(svg("rect", { class: "base", x: 0, y, width: W, height: h }));
+    for (const b of data.rains_bands) {
+      const a = x(b.start), z = x(b.end);
+      if (a <= z) s.append(svg("rect", { class: "wet", x: a, y, width: Math.max(2, z - a), height: h }));
+      else { s.append(svg("rect", { class: "wet", x: a, y, width: W - a, height: h })); s.append(svg("rect", { class: "wet", x: 0, y, width: z, height: h })); }
+    }
+    for (const ss of data.seasons) {
+      const px = x(ss.start), anchor = px < 30 ? "start" : px > W - 30 ? "end" : "middle";
+      s.append(svg("line", { class: "tick", x1: px, x2: px, y1: y - 9, y2: y + h }));
+      s.append(svg("text", { class: "season-name", x: px, y: y - 12, "text-anchor": anchor }, ss.name));
+    }
+    MONTHS.forEach((m, i) => s.append(svg("text", { x: (doy(`${i + 1}-15`) / 365) * W, y: y + h + 14, "text-anchor": "middle" }, m[0])));
+    const tx = x(data.today.slice(5)), flip = tx > W - 50;
+    s.append(svg("line", { class: "today-line", x1: tx, x2: tx, y1: y - 3, y2: y + h + 3 }));
+    s.append(svg("circle", { class: "today-dot", cx: tx, cy: y + h + 3, r: 3.5 }));
+    s.append(svg("text", { class: "today-label", x: tx + (flip ? -7 : 7), y: H - 4, "text-anchor": flip ? "end" : "start" }, "today"));
+    return s;
+  }
+  function itemRow(it) {
+    const urgent = it.status === "closing";
+    const when = it.days_left != null ? (it.days_left === 0 ? "Last day" : `${plural(it.days_left, "day")} left`) : `Opens in ${plural(it.days_until, "day")}`;
+    const crop = el("span", { class: "crop" }, it.crop);
+    if (it.local) crop.append(" ", el("span", { class: "local" }, it.local));
+    const sum = el("summary", null, crop, el("span", { class: "when" + (urgent ? " urgent" : "") }, when),
+      el("span", { class: "action" }, it.action_label), el("span", { class: "range" }, `${it.start_label} – ${it.end_label}`));
+    if (it.days_left != null) {
+      const total = Math.round((new Date(it.end) - new Date(it.start)) / 864e5) + 1;
+      const fill = el("span", { class: urgent ? "urgent" : "" });
+      fill.style.width = Math.max(4, Math.min(100, Math.round(((it.days_left + 1) / total) * 100))) + "%";
+      sum.append(el("span", { class: "left" }, fill));
+    }
+    const season = it.season === "Rains" ? "Timed to the start of the rains." : `${it.season} season.`;
+    return el("details", { class: "item" }, sum, el("p", { class: "tip" }, `${season} ${it.tip}`));
+  }
+  function group(title, hint, items) {
+    if (!items.length) return null;
+    const g = el("section", { class: "group" }, el("h2", null, title));
+    if (hint) g.append(el("p", { class: "hint" }, hint));
+    items.forEach((it) => g.append(itemRow(it)));
+    return g;
+  }
+  function headline(d) {
+    if (d.current_season) return `${d.current_season.title} is open.`;
+    const n = d.next_season;
+    return n.days_until === 1 ? `${n.title} opens tomorrow.` : `${n.title} opens in ${plural(n.days_until, "day")}.`;
+  }
+  function byline(b) {
+    if (b.source === "model") return `Written by ${b.model}${b.seconds != null ? ` in ${b.seconds}s` : ""}. Every crop and date was checked against the calendar.`;
+    return b.note ? `Written by the built-in writer. ${b.note}` : "Written by the built-in writer.";
+  }
+  function langBar(d) {
+    if (!enabledFeatures.has("language")) return null;
+    const sel = el("select", { id: "lang", "aria-label": "Note language" });
+    LANGS.forEach(([v, label]) => sel.append(el("option", { value: v }, label)));
+    sel.value = settings.lang || "";
+    sel.addEventListener("change", () => { settings.lang = sel.value; store.set(LS_SETTINGS, settings); loadWeek(); });
+    return el("div", { class: "langbar" }, el("label", { for: "lang" }, "Note language"), sel);
+  }
+  function briefBlock(d) {
+    const t = d.translation, wrap = el("div");
+    if (t && t.ok) {
+      const p = el("p", { class: "brief", lang: t.lang, dir: t.lang === "ur" ? "rtl" : null }, t.text);
+      const en = el("p", { class: "brief", lang: "en", hidden: "" }, d.brief.text);
+      const toggle = el("button", { class: "linkbtn", type: "button" }, "Show English");
+      toggle.addEventListener("click", () => { en.hidden = !en.hidden; toggle.textContent = en.hidden ? "Show English" : "Hide English"; });
+      wrap.append(p, en, el("p", { class: "byline" }, `Translated by ${d.brief.model || "the model"}${t.seconds != null ? ` in ${t.seconds}s` : ""}; every number was checked against the original. `, toggle),
+        el("p", { class: "byline" }, byline(d.brief)));
+    } else {
+      wrap.append(el("p", { class: "brief" }, d.brief.text), el("p", { class: "byline" }, byline(d.brief)));
+      if (t && !t.ok) wrap.append(el("p", { class: "byline" }, t.note));
+    }
+    return wrap;
+  }
+  function waterBox() {
+    if (!enabledFeatures.has("water")) return null;
+    const box = el("div", { class: "water", "aria-live": "polite" }, "Checking the forecast for watering…");
+    api("/api/water?" + query()).then(({ data }) => {
+      if (data.available) box.replaceChildren(el("strong", null, "Water today? "), data.advice, el("span", { class: "small" }, ` (${data.source})`));
+      else if (settings.region === "custom" && settings.lat == null) {
+        const b = el("button", { class: "linkbtn", type: "button" }, "Use my location");
+        b.addEventListener("click", () => navigator.geolocation && navigator.geolocation.getCurrentPosition(
+          (pos) => { settings.lat = +pos.coords.latitude.toFixed(2); settings.lon = +pos.coords.longitude.toFixed(2); store.set(LS_SETTINGS, settings); loadWeek(); },
+          () => box.replaceChildren("Location wasn't shared, so there's no watering tip.")));
+        box.replaceChildren("Watering tips need your location. ", b);
+      } else box.replaceChildren(data.note);
+    }).catch(() => box.replaceChildren("No watering tip right now (no connection)."));
+    return box;
+  }
+  function renderWeek(d) {
+    const sheet = $("sheet");
+    sheet.replaceChildren(el("h1", { class: "headline" }, headline(d)), yearStrip(d),
+      el("p", { class: "legend" }, el("span", { class: "swatch", "aria-hidden": "true" }), `Rains: ${d.rains_bands.map((b) => `${b.name}, usually ${mdLabel(b.start)} to ${mdLabel(b.end)}`).join("; ")}.`),
+      langBar(d), briefBlock(d), waterBox() || "");
+    for (const a of d.alerts) sheet.append(el("div", { class: "alert", role: "note" }, a));
+    for (const g of [group("Plant now", "Tap a row for a tip.", d.now), group("Coming up", "Opening in the next three weeks.", d.soon), group("Later", null, d.later)]) if (g) sheet.append(g);
+    if (!d.now.length && !d.soon.length && !d.later.length) sheet.append(el("p", { class: "empty" }, "Nothing to plant right now. Check back as the season turns."));
+  }
+  async function loadWeek() {
+    $("sheet").replaceChildren(el("p", { class: "empty" }, "Reading the calendar…"));
+    notice("");
+    try {
+      const { data, res } = await api("/api/plan?" + query(settings.lang ? { lang: settings.lang } : {}));
+      $("where").textContent = `${data.region.label}, ${isoLabel(data.today)}`;
+      renderWeek(data);
+      if (res.headers.get("X-Gardener-Saved")) notice(`No connection. Showing the card saved for ${isoLabel(data.today)}.`);
+      else store.set(LS_KEY, { savedOn: todayLocal(), data });
+    } catch (err) {
+      const cached = store.get(LS_KEY, null);
+      if (cached && err instanceof TypeError) { renderWeek(cached.data); notice(`No connection. Showing the card saved on ${isoLabel(cached.savedOn)}.`); }
+      else { $("sheet").replaceChildren(el("p", { class: "empty" }, err.message)); $("settings").open = true; }
+    }
+  }
+
+  // ---------- plant check ----------
+  function renderCheck(d) {
+    const out = $("check-result");
+    if (!d.ok) return out.replaceChildren(el("p", { class: "notice" }, d.note));
+    const head = d.looks_healthy === true ? "It looks healthy." : d.looks_healthy === false ? "Something may be wrong." : "Here's what Gemma sees.";
+    out.replaceChildren(el("h2", null, head));
+    if (d.plant) out.append(el("p", { class: "small" }, `Looks like: ${d.plant}`));
+    if (d.possible_causes.length) {
+      out.append(el("p", { class: "small" }, "Possible causes, most likely first:"));
+      d.possible_causes.forEach((c) => out.append(el("div", { class: "cause" }, el("strong", null, c.cause), c.check ? el("span", null, `Check: ${c.check}`) : null)));
+    }
+    if (d.next_step) out.append(el("p", null, d.next_step));
+    if (d.note) out.append(el("p", { class: "byline" }, d.note));
+    out.append(el("p", { class: "byline" }, `Suggested by ${d.model} in ${d.seconds}s. A small model can be wrong: treat these as things to check, not a diagnosis.`));
+  }
+
+  // ---------- ask ----------
+  function renderAsk(d) {
+    const out = $("ask-result");
+    out.replaceChildren();
+    if (d.answer) out.append(el("p", { class: "verdict" }, d.answer), el("p", { class: "byline" }, `Answered by ${d.model} in ${d.seconds}s. Dates were checked against the calendar.`));
+    if (d.note) out.append(el("p", { class: "byline" }, d.note));
+    if (d.missing.length) out.append(el("p", null, `${d.missing.join(", ")} ${d.missing.length === 1 ? "isn't" : "aren't"} in the calendar for this place.`));
+    if (d.windows.length) {
+      const g = el("section", { class: "group" }, el("h2", null, "From the calendar"));
+      d.windows.forEach((w) => g.append(itemRow(w)));
+      out.append(g);
+    } else if (!d.answer && !d.crops.length) out.append(el("p", { class: "small" }, "Name a crop in your question (for example tomato, palak or bhindi) to see its dates."));
+  }
+
+  // ---------- seed packet ----------
+  function renderPacket(d) {
+    const out = $("packet-result");
+    if (!d.ok) return out.replaceChildren(el("p", { class: "notice" }, d.note));
+    const facts = el("ul", { class: "facts" });
+    const rows = [["Crop", d.packet.crop], ["Variety", d.packet.variety], ["Name on packet", d.packet.local_name], ["Sowing time printed", d.packet.sowing_time], ["Days to harvest printed", d.packet.days_to_harvest]];
+    rows.filter(([, v]) => v).forEach(([k, v]) => facts.append(el("li", null, el("span", null, k), el("span", null, v))));
+    out.replaceChildren(el("p", { class: "verdict" }, d.verdict), el("h2", null, "Read from the packet"), facts,
+      el("p", { class: "byline" }, `Read by ${d.model} in ${d.seconds}s. The packet is printed for the whole country; the calendar for your place decides.`));
+    if (d.windows.length) { const g = el("section", { class: "group" }, el("h2", null, "Your calendar")); d.windows.forEach((w) => g.append(itemRow(w))); out.append(g); }
+  }
+
+  // ---------- my garden ----------
+  const diary = () => store.get(LS_DIARY, []);
+  async function loadGarden() {
+    const out = $("garden-result"), entries = diary();
+    if (!entries.length) return out.replaceChildren(el("p", { class: "small" }, "Nothing planted yet. Add your first planting above."));
+    try {
+      const { data } = await api("/api/diary", { entries });
+      out.replaceChildren(el("p", { class: "verdict" }, data.summary));
+      data.entries.forEach((e) => {
+        const rm = el("button", { class: "btn quiet", type: "button", "aria-label": `Remove ${e.crop}` }, "Remove");
+        rm.addEventListener("click", () => { store.set(LS_DIARY, diary().filter((x) => x.id !== e.id)); loadGarden(); });
+        out.append(el("div", { class: "entry" },
+          el("strong", null, e.crop), rm,
+          el("span", { class: "meta" }, `Planted ${isoLabel(e.planted)}${e.note ? `, ${e.note}` : ""}. ${e.text}`),
+          e.resow ? el("span", { class: "resow" }, e.resow_text) : null));
+      });
+    } catch (err) {
+      if (err instanceof TypeError) out.replaceChildren(el("p", { class: "notice" }, "No connection. Your plantings are saved on this device."));
+      else errorBox(out, err);
+    }
+  }
+
+  // ---------- balcony ----------
+  function renderBalcony(d) {
+    const out = $("balcony-result");
+    out.replaceChildren();
+    if (d.note) out.append(el("p", { class: "notice" }, d.note));
+    d.suggestions.forEach((s) => {
+      const when = s.days_left != null ? `start now, ${plural(s.days_left, "day")} left` : `opens in ${plural(s.days_until, "day")}`;
+      out.append(el("div", { class: "pick" }, el("strong", null, s.crop), s.local ? el("span", { class: "local" }, ` ${s.local}`) : null,
+        el("div", { class: "meta" }, `${POT_WORD[s.pot]}: ${s.action_label.toLowerCase()}, ${when}. ${s.why}`)));
+    });
+    if (d.more) out.append(el("p", { class: "small" }, `${d.more} more would fit with more pots.`));
+    if (d.skipped.length) out.append(el("p", { class: "skipped" }, "Not suggested: " + d.skipped.map((x) => `${x.crop.toLowerCase()} (${x.reason})`).join(", ") + "."));
+  }
+
+  // ---------- tabs ----------
+  const TABS = ["week", "check", "ask", "packet", "garden", "balcony"];
+  function showTab() {
+    let tab = location.hash.slice(1);
+    const link = document.querySelector(`.tabs a[data-tab="${tab}"]`);
+    if (!TABS.includes(tab) || !link || link.hidden) tab = "week";
+    TABS.forEach((t) => { $(`panel-${t}`).hidden = t !== tab; });
+    document.querySelectorAll(".tabs a").forEach((a) => a.setAttribute("aria-current", a.dataset.tab === tab ? "page" : "false"));
+    if (tab === "garden") loadGarden();
+  }
+
+  // ---------- settings ----------
+  function fillRegions() {
+    const sel = $("region");
+    sel.replaceChildren();
+    for (const c of [...new Set([...COUNTRY_ORDER, ...regions.map((r) => r.country)])]) {
+      const rs = regions.filter((r) => r.country === c);
+      if (!rs.length) continue;
+      const og = el("optgroup", { label: c });
+      rs.forEach((r) => og.append(el("option", { value: r.key }, r.label)));
+      sel.append(og);
+    }
+    sel.append(el("option", { value: "custom" }, "My own monsoon dates"));
+    const keys = regions.map((r) => r.key).concat("custom");
+    sel.value = keys.includes(settings.region) ? settings.region : (regions[0] ? regions[0].key : "custom");
+    settings.region = sel.value;
+  }
+  function syncCustom() {
+    const custom = $("region").value === "custom";
+    ["onset", "withdrawal", "cool"].forEach((id) => { $(id).disabled = !custom; });
+    const r = regions.find((x) => x.key === $("region").value);
+    if (!custom && r) { $("onset").value = r.onset || ""; $("withdrawal").value = r.withdrawal || ""; $("cool").checked = !!r.cool; $("source-note").textContent = r.source ? `Dates from: ${r.source}.` : ""; }
+    else if (custom) { $("onset").value = settings.onset || ""; $("withdrawal").value = settings.withdrawal || ""; $("cool").checked = settings.cool !== false; $("source-note").textContent = "Enter the usual monsoon dates for your town, from your local weather office."; }
+  }
+
+  async function init() {
+    try { regions = await (await fetch("/api/regions")).json(); } catch (_) { regions = []; }
+    try { enabledFeatures = new Set((await (await fetch("/api/features")).json()).enabled); } catch (_) { enabledFeatures = new Set(); }
+    try { crops = await (await fetch("/api/crops")).json(); } catch (_) { crops = []; }
+    document.querySelectorAll(".tabs a[data-feature]").forEach((a) => { a.hidden = !enabledFeatures.has(a.dataset.feature); });
+    fillRegions(); syncCustom();
+    $("day").value = settings.day || "";
+    $("region").addEventListener("change", syncCustom);
+    $("form").addEventListener("submit", (e) => {
+      e.preventDefault();
+      const prev = settings.region;
+      settings = { ...settings, region: $("region").value, onset: $("onset").value.trim(), withdrawal: $("withdrawal").value.trim(), cool: $("cool").checked, day: $("day").value };
+      if (settings.region !== "custom" || prev !== "custom") { delete settings.lat; delete settings.lon; }
+      store.set(LS_SETTINGS, settings);
+      $("settings").open = false;
+      loadWeek(); showTab();
+    });
+    $("print").addEventListener("click", () => window.print());
+
+    // plant check
+    wirePreview($("check-photo"), $("check-preview"));
+    $("check-form").addEventListener("submit", async (e) => {
+      e.preventDefault();
+      const f = $("check-photo").files[0], out = $("check-result"), btn = $("check-go");
+      if (!f) return errorBox(out, new Error("Take or choose a photo first."));
+      busy(btn, true, "Looking at your plant…"); out.replaceChildren(el("p", { class: "small" }, "This can take up to a minute on a laptop."));
+      try { renderCheck((await api("/api/photo", { image: await readPhoto(f), note: $("check-note").value })).data); }
+      catch (err) { errorBox(out, err); } finally { busy(btn, false); }
+    });
+    // ask
+    $("ask-form").addEventListener("submit", async (e) => {
+      e.preventDefault();
+      const out = $("ask-result"), btn = $("ask-go");
+      busy(btn, true, "Thinking…");
+      try { renderAsk((await api("/api/ask", { question: $("ask-q").value })).data); }
+      catch (err) { errorBox(out, err); } finally { busy(btn, false); }
+    });
+    // packet
+    wirePreview($("packet-photo"), $("packet-preview"));
+    $("packet-form").addEventListener("submit", async (e) => {
+      e.preventDefault();
+      const f = $("packet-photo").files[0], out = $("packet-result"), btn = $("packet-go");
+      if (!f) return errorBox(out, new Error("Take or choose a photo of the packet first."));
+      busy(btn, true, "Reading the packet…");
+      try { renderPacket((await api("/api/packet", { image: await readPhoto(f, 1280) })).data); }
+      catch (err) { errorBox(out, err); } finally { busy(btn, false); }
+    });
+    // garden
+    crops.forEach((c) => $("garden-crop").append(el("option", { value: c.name }, c.name)));
+    $("garden-date").value = todayLocal(); $("garden-date").max = todayLocal();
+    $("garden-form").addEventListener("submit", (e) => {
+      e.preventDefault();
+      const entry = { id: Date.now().toString(36), crop: $("garden-crop").value, planted: $("garden-date").value || todayLocal(), note: $("garden-note").value.trim() };
+      store.set(LS_DIARY, [...diary(), entry]);
+      $("garden-note").value = "";
+      loadGarden();
+    });
+    // balcony
+    for (let h = 1; h <= 12; h++) $("balcony-sun").append(el("option", { value: h }, h === 12 ? "12 or more" : String(h)));
+    $("balcony-sun").value = "4";
+    $("balcony-form").addEventListener("submit", async (e) => {
+      e.preventDefault();
+      try { renderBalcony((await api("/api/balcony?" + query({ sun: $("balcony-sun").value, pots: $("balcony-pots").value }))).data); }
+      catch (err) { errorBox($("balcony-result"), err); }
+    });
+
+    window.addEventListener("hashchange", showTab);
+    showTab(); loadWeek();
+    if ("serviceWorker" in navigator) navigator.serviceWorker.register("/sw.js").catch(() => {});
+  }
+  init();
+})();
+</script>
+</body>
+</html>
